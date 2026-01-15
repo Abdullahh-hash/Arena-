@@ -221,6 +221,63 @@ function TicTacToe({ onExit }) {
     'AWAITING CONFIRMATION'
   ]);
   const [moveCount, setMoveCount] = useState(0);
+  const [spectators, setSpectators] = useState(0);
+  const [sessionId] = useState(`session_${Date.now()}_${Math.random()}`);
+
+  // Real spectator tracking with persistent storage
+  useState(() => {
+    let isActive = true;
+    
+    const updateSpectators = async () => {
+      try {
+        // Register this session
+        const now = Date.now();
+        await window.storage.set(`spectator:${sessionId}`, now.toString(), true);
+        
+        // Get all spectator sessions
+        const result = await window.storage.list('spectator:', true);
+        if (result && result.keys) {
+          // Filter out stale sessions (older than 10 seconds)
+          const activeKeys = [];
+          for (const key of result.keys) {
+            try {
+              const data = await window.storage.get(key, true);
+              if (data && data.value) {
+                const timestamp = parseInt(data.value);
+                if (now - timestamp < 10000) { // 10 second timeout
+                  activeKeys.push(key);
+                }
+              }
+            } catch (e) {
+              // Skip invalid entries
+            }
+          }
+          
+          setSpectators(activeKeys.length);
+        }
+      } catch (error) {
+        console.log('Spectator tracking error:', error);
+      }
+    };
+
+    // Initial update
+    updateSpectators();
+    
+    // Update every 3 seconds
+    const interval = setInterval(() => {
+      if (isActive) {
+        updateSpectators();
+      }
+    }, 3000);
+
+    // Cleanup on unmount
+    return () => {
+      isActive = false;
+      clearInterval(interval);
+      // Remove this session
+      window.storage.delete(`spectator:${sessionId}`, true).catch(() => {});
+    };
+  }, [sessionId]);
 
   const checkWinner = (squares) => {
     const lines = [
@@ -237,7 +294,7 @@ function TicTacToe({ onExit }) {
 
   const initiateMatch = () => {
     setMatchStarted(true);
-    setCombatLog(prev => [...prev, 'MATCH INITIALIZATION CONFIRMED']);
+    setCombatLog(prev => [...prev, 'MATCH INITIALIZATION CONFIRMED', `${spectators} SPECTATORS CONNECTED`]);
     
     let count = 3;
     const timer = setInterval(() => {
@@ -309,6 +366,43 @@ function TicTacToe({ onExit }) {
       >
         ← EXIT ARENA
       </button>
+
+      {/* Real-time Spectator Counter - top right */}
+      <div style={{
+        position: 'absolute',
+        top: '-50px',
+        right: '0',
+        padding: '10px 20px',
+        background: 'rgba(0, 212, 255, 0.1)',
+        border: '1px solid rgba(0, 212, 255, 0.4)',
+        borderRadius: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        fontFamily: 'monospace'
+      }}>
+        <div style={{
+          width: '8px',
+          height: '8px',
+          background: spectators > 0 ? '#ff4757' : '#666',
+          borderRadius: '50%',
+          animation: spectators > 0 ? 'spectatorPulse 2s infinite' : 'none',
+          boxShadow: spectators > 0 ? '0 0 10px #ff4757' : 'none',
+          transition: 'all 0.3s ease'
+        }}></div>
+        <div>
+          <span style={{ fontSize: '11px', color: '#666', letterSpacing: '1px' }}>LIVE: </span>
+          <span style={{ 
+            fontSize: '16px', 
+            color: spectators > 0 ? '#00d4ff' : '#666', 
+            fontWeight: 'bold',
+            transition: 'all 0.3s ease'
+          }}>{spectators}</span>
+          <span style={{ fontSize: '11px', color: '#666', marginLeft: '5px' }}>
+            {spectators === 1 ? 'spectator' : 'spectators'}
+          </span>
+        </div>
+      </div>
 
       {/* Scanline overlay effect */}
       <div style={{
@@ -787,6 +881,10 @@ function TicTacToe({ onExit }) {
         @keyframes logEntry {
           from { opacity: 0; transform: translateX(-10px); }
           to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes spectatorPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.2); }
         }
       `}</style>
     </div>
