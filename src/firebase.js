@@ -7,7 +7,7 @@ import { getAnalytics } from "firebase/analytics";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyAjZnSAnfAb2mLWfXBIet6PZ6n3yGbX7Ew",
+  apiKey: "AIzaSyAjZnSAnfAb2mLWfXBIet6PZ6n3yGX7Ew",
   authDomain: "arena-spectate.firebaseapp.com",
   projectId: "arena-spectate",
   storageBucket: "arena-spectate.firebasestorage.app",
