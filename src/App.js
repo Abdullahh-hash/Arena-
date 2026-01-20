@@ -1,4 +1,30 @@
 import React, { useState, useEffect } from 'react';
+if (!window.storage) {
+  window.storage = {
+    get: async (key) => {
+      const value = localStorage.getItem(key);
+      return { value };
+    },
+    set: async (key, value) => {
+      localStorage.setItem(key, value);
+      return true;
+    },
+    list: async (prefix) => {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith(prefix)) {
+          keys.push(key);
+        }
+      }
+      return { keys };
+    },
+    delete: async (key) => {
+      localStorage.removeItem(key);
+      return true;
+    }
+  };
+}
 
 // --- ADVERTISER DASHBOARD ---
 function AdvertiserDashboard({ onLogout, advertiserName }) {
@@ -561,37 +587,37 @@ function LoginModal({ onLogin, onAdvertiserLogin }) {
             }}
           />
           <button 
-  onClick={handleSubmit}
-  style={{
-    width: '100%',
-    padding: '18px 20px',
-    fontSize: '18px',
-    fontWeight: 'bold',
-    background: isAdvertiser ? 'linear-gradient(90deg, #7b2ff7, #a855f7)' : 'linear-gradient(90deg, #00d4ff, #7b2ff7)',
-    border: 'none',
-    borderRadius: '10px',
-    color: 'white',
-    cursor: 'pointer',
-    letterSpacing: '3px',
-    transition: 'all 0.3s ease',
-    boxShadow: `0 0 30px ${isAdvertiser ? 'rgba(123, 47, 247, 0.5)' : 'rgba(0, 212, 255, 0.5)'}`,
-    position: 'relative',
-    overflow: 'hidden'
-  }}
->
-  <div style={{
-    position: 'absolute',
-    top: 0,
-    left: '-100%',
-    width: '100%',
-    height: '100%',
-    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-    animation: 'shimmer 3s infinite'
-  }}></div>
-  <span style={{ position: 'relative', zIndex: 1 }}>
-    {isAdvertiser ? '💼 ACCESS PORTAL' : '⚡ ENTER ARENA ⚡'}
-  </span>
-</button>
+            onClick={handleSubmit}
+            style={{
+              width: '100%',
+              padding: '18px 20px',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              background: isAdvertiser ? 'linear-gradient(90deg, #7b2ff7, #a855f7)' : 'linear-gradient(90deg, #00d4ff, #7b2ff7)',
+              border: 'none',
+              borderRadius: '10px',
+              color: 'white',
+              cursor: 'pointer',
+              letterSpacing: '3px',
+              transition: 'all 0.3s ease',
+              boxShadow: `0 0 30px ${isAdvertiser ? 'rgba(123, 47, 247, 0.5)' : 'rgba(0, 212, 255, 0.5)'}`,
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: '-100%',
+              width: '100%',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+              animation: 'shimmer 3s infinite'
+            }}></div>
+            <span style={{ position: 'relative', zIndex: 1 }}>
+              {isAdvertiser ? '💼 ACCESS PORTAL' : '⚡ ENTER ARENA ⚡'}
+            </span>
+          </button>
         </div>
         
         <p style={{
