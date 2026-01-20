@@ -1983,14 +1983,38 @@ function App() {
               <div style={{ color: '#666', marginBottom: '3px' }}>XP</div>
               <div style={{ color: '#00ff88', fontWeight: 'bold', fontSize: '14px' }}>{userXP} / 1000</div>
             </div>
-            <div style={{
-              width: '8px',
-              height: '8px',
-              background: '#00ff88',
-              borderRadius: '50%',
-              animation: 'statusBlink 2s infinite',
-              boxShadow: '0 0 10px #00ff88'
-            }}></div>
+            
+            {/* --- NEW LOGOUT BUTTON --- */}
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: '10px 20px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                background: 'rgba(255, 68, 68, 0.15)',
+                border: '1px solid #ff4444',
+                borderRadius: '8px',
+                color: '#ff6b6b',
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+                letterSpacing: '1px',
+                transition: 'all 0.3s ease',
+                marginLeft: '10px',
+                boxShadow: '0 0 10px rgba(255, 68, 68, 0.1)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 68, 68, 0.3)';
+                e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 68, 68, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 68, 68, 0.15)';
+                e.currentTarget.style.boxShadow = '0 0 10px rgba(255, 68, 68, 0.1)';
+              }}
+            >
+              SYSTEM EXIT
+            </button>
+            {/* ------------------------- */}
+
           </div>
         </div>
         
