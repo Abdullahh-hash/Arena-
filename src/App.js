@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 
 // --- ADVERTISER DASHBOARD ---
 function AdvertiserDashboard({ onLogout, advertiserName }) {
-  const [adSlots, setAdSlots] = useState([]);
+  const [] = useState([]);
   const [activeAds, setActiveAds] = useState([]);
   const [newAd, setNewAd] = useState({ title: '', url: '', imageUrl: '' });
   const [budget, setBudget] = useState(5000);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadAdvertiserData();
-  }, []);
+ // eslint-disable-next-line
+useEffect(() => {
+  loadAdvertiserData();
+}, []);
 
   const loadAdvertiserData = async () => {
     try {
