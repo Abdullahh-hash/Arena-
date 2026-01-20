@@ -1,8 +1,378 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+// --- ADVERTISER DASHBOARD ---
+function AdvertiserDashboard({ onLogout, advertiserName }) {
+  const [adSlots, setAdSlots] = useState([]);
+  const [activeAds, setActiveAds] = useState([]);
+  const [newAd, setNewAd] = useState({ title: '', url: '', imageUrl: '' });
+  const [budget, setBudget] = useState(5000);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadAdvertiserData();
+  }, []);
+
+  const loadAdvertiserData = async () => {
+    try {
+      // Load advertiser's ads
+      const adsResult = await window.storage.get(`advertiser:${advertiserName}:ads`, true);
+      if (adsResult && adsResult.value) {
+        setActiveAds(JSON.parse(adsResult.value));
+      }
+      
+      // Load budget
+      const budgetResult = await window.storage.get(`advertiser:${advertiserName}:budget`, true);
+      if (budgetResult && budgetResult.value) {
+        setBudget(parseInt(budgetResult.value));
+      }
+    } catch (error) {
+      console.log('Error loading advertiser data:', error);
+    }
+    setLoading(false);
+  };
+
+  const purchaseAdSlot = async () => {
+    if (!newAd.title || !newAd.url) {
+      alert('Please fill in title and URL');
+      return;
+    }
+
+    const cost = 500;
+    if (budget < cost) {
+      alert('Insufficient budget!');
+      return;
+    }
+
+    const ad = {
+      id: `ad_${Date.now()}`,
+      title: newAd.title,
+      url: newAd.url,
+      imageUrl: newAd.imageUrl || '🎯',
+      impressions: 0,
+      clicks: 0,
+      active: true,
+      createdAt: Date.now()
+    };
+
+    const updatedAds = [...activeAds, ad];
+    const newBudget = budget - cost;
+
+    try {
+      await window.storage.set(`advertiser:${advertiserName}:ads`, JSON.stringify(updatedAds), true);
+      await window.storage.set(`advertiser:${advertiserName}:budget`, newBudget.toString(), true);
+      
+      // Add to global ad pool
+      const globalAds = await window.storage.get('global:active_ads', true);
+      const allAds = globalAds && globalAds.value ? JSON.parse(globalAds.value) : [];
+      allAds.push(ad);
+      await window.storage.set('global:active_ads', JSON.stringify(allAds), true);
+
+      setActiveAds(updatedAds);
+      setBudget(newBudget);
+      setNewAd({ title: '', url: '', imageUrl: '' });
+      alert('Ad slot purchased successfully!');
+    } catch (error) {
+      console.log('Error purchasing ad:', error);
+      alert('Error purchasing ad slot');
+    }
+  };
+
+  const pauseAd = async (adId) => {
+    const updatedAds = activeAds.map(ad => 
+      ad.id === adId ? { ...ad, active: !ad.active } : ad
+    );
+    
+    try {
+      await window.storage.set(`advertiser:${advertiserName}:ads`, JSON.stringify(updatedAds), true);
+      setActiveAds(updatedAds);
+    } catch (error) {
+      console.log('Error updating ad:', error);
+    }
+  };
+
+  if (loading) {
+    return <div style={{ color: '#00d4ff', textAlign: 'center', padding: '100px' }}>Loading...</div>;
+  }
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
+      color: 'white',
+      padding: '40px 20px'
+    }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{
+          background: 'rgba(10, 10, 20, 0.8)',
+          padding: '30px',
+          borderRadius: '20px',
+          border: '2px solid #7b2ff7',
+          marginBottom: '30px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <h1 style={{
+              fontSize: '36px',
+              background: 'linear-gradient(90deg, #7b2ff7, #a855f7)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginBottom: '10px'
+            }}>ADVERTISER PORTAL</h1>
+            <p style={{ color: '#666', fontSize: '14px', fontFamily: 'monospace' }}>
+              Account: {advertiserName}
+            </p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{
+              fontSize: '32px',
+              color: '#00ff88',
+              fontWeight: 'bold',
+              marginBottom: '5px'
+            }}>${budget}</div>
+            <div style={{ fontSize: '12px', color: '#666', fontFamily: 'monospace' }}>
+              AVAILABLE BUDGET
+            </div>
+            <button
+              onClick={onLogout}
+              style={{
+                marginTop: '15px',
+                padding: '10px 20px',
+                background: 'rgba(255, 68, 68, 0.2)',
+                border: '1px solid #ff4444',
+                borderRadius: '8px',
+                color: '#ff6b6b',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontFamily: 'monospace'
+              }}
+            >
+              LOGOUT
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+          {/* Create New Ad */}
+          <div style={{
+            background: 'rgba(10, 10, 20, 0.8)',
+            padding: '30px',
+            borderRadius: '20px',
+            border: '2px solid #00d4ff'
+          }}>
+            <h2 style={{
+              fontSize: '24px',
+              color: '#00d4ff',
+              marginBottom: '20px',
+              letterSpacing: '2px'
+            }}>CREATE NEW AD</h2>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '12px', color: '#666', marginBottom: '8px', display: 'block', fontFamily: 'monospace' }}>
+                AD TITLE
+              </label>
+              <input
+                type="text"
+                value={newAd.title}
+                onChange={(e) => setNewAd({ ...newAd, title: e.target.value })}
+                placeholder="Enter ad title"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: '1px solid rgba(0, 212, 255, 0.3)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '12px', color: '#666', marginBottom: '8px', display: 'block', fontFamily: 'monospace' }}>
+                TARGET URL
+              </label>
+              <input
+                type="text"
+                value={newAd.url}
+                onChange={(e) => setNewAd({ ...newAd, url: e.target.value })}
+                placeholder="https://example.com"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: '1px solid rgba(0, 212, 255, 0.3)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{ fontSize: '12px', color: '#666', marginBottom: '8px', display: 'block', fontFamily: 'monospace' }}>
+                EMOJI/ICON (optional)
+              </label>
+              <input
+                type="text"
+                value={newAd.imageUrl}
+                onChange={(e) => setNewAd({ ...newAd, imageUrl: e.target.value })}
+                placeholder="🎯 or emoji"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: '1px solid rgba(0, 212, 255, 0.3)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{
+              background: 'rgba(123, 47, 247, 0.1)',
+              padding: '15px',
+              borderRadius: '10px',
+              marginBottom: '20px',
+              border: '1px solid rgba(123, 47, 247, 0.3)'
+            }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px', fontFamily: 'monospace' }}>
+                COST PER SLOT
+              </div>
+              <div style={{ fontSize: '24px', color: '#7b2ff7', fontWeight: 'bold' }}>
+                $500
+              </div>
+            </div>
+
+            <button
+              onClick={purchaseAdSlot}
+              style={{
+                width: '100%',
+                padding: '15px',
+                background: 'linear-gradient(90deg, #00d4ff, #7b2ff7)',
+                border: 'none',
+                borderRadius: '10px',
+                color: 'white',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                letterSpacing: '2px'
+              }}
+            >
+              PURCHASE AD SLOT
+            </button>
+          </div>
+
+          {/* Active Ads */}
+          <div style={{
+            background: 'rgba(10, 10, 20, 0.8)',
+            padding: '30px',
+            borderRadius: '20px',
+            border: '2px solid #00ff88'
+          }}>
+            <h2 style={{
+              fontSize: '24px',
+              color: '#00ff88',
+              marginBottom: '20px',
+              letterSpacing: '2px'
+            }}>ACTIVE CAMPAIGNS</h2>
+
+            {activeAds.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px',
+                color: '#666',
+                fontSize: '14px',
+                fontFamily: 'monospace'
+              }}>
+                No active ads. Purchase your first ad slot!
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {activeAds.map((ad) => (
+                  <div
+                    key={ad.id}
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.5)',
+                      padding: '20px',
+                      borderRadius: '12px',
+                      border: `2px solid ${ad.active ? '#00ff88' : '#666'}`
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
+                      <div>
+                        <div style={{ fontSize: '18px', color: 'white', fontWeight: 'bold', marginBottom: '5px' }}>
+                          {ad.imageUrl} {ad.title}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#666', fontFamily: 'monospace' }}>
+                          {ad.url}
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '5px 12px',
+                        background: ad.active ? 'rgba(0, 255, 136, 0.2)' : 'rgba(100, 100, 100, 0.2)',
+                        borderRadius: '6px',
+                        fontSize: '10px',
+                        color: ad.active ? '#00ff88' : '#666',
+                        fontFamily: 'monospace'
+                      }}>
+                        {ad.active ? 'ACTIVE' : 'PAUSED'}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#666', fontFamily: 'monospace' }}>IMPRESSIONS</div>
+                        <div style={{ fontSize: '18px', color: '#00d4ff', fontWeight: 'bold' }}>{ad.impressions}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#666', fontFamily: 'monospace' }}>CLICKS</div>
+                        <div style={{ fontSize: '18px', color: '#7b2ff7', fontWeight: 'bold' }}>{ad.clicks}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#666', fontFamily: 'monospace' }}>CTR</div>
+                        <div style={{ fontSize: '18px', color: '#00ff88', fontWeight: 'bold' }}>
+                          {ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(1) : 0}%
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => pauseAd(ad.id)}
+                      style={{
+                        padding: '8px 16px',
+                        background: ad.active ? 'rgba(255, 68, 68, 0.2)' : 'rgba(0, 255, 136, 0.2)',
+                        border: `1px solid ${ad.active ? '#ff4444' : '#00ff88'}`,
+                        borderRadius: '6px',
+                        color: ad.active ? '#ff6b6b' : '#00ff88',
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        fontFamily: 'monospace'
+                      }}
+                    >
+                      {ad.active ? 'PAUSE' : 'RESUME'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // --- LOGIN MODAL ---
-function LoginModal({ onLogin }) {
+function LoginModal({ onLogin, onAdvertiserLogin }) {
   const [username, setUsername] = useState('');
+  const [isAdvertiser, setIsAdvertiser] = useState(false);
   const [logs, setLogs] = useState([
     'INITIALIZING ARENA PROTOCOL...',
     'CHECKING NETWORK STATUS...',
@@ -12,7 +382,13 @@ function LoginModal({ onLogin }) {
   const handleSubmit = () => {
     if (username.trim()) {
       setLogs(prev => [...prev, `USER [${username.trim()}] AUTHENTICATED`, 'ACCESS GRANTED']);
-      setTimeout(() => onLogin(username.trim()), 800);
+      setTimeout(() => {
+        if (isAdvertiser) {
+          onAdvertiserLogin(username.trim());
+        } else {
+          onLogin(username.trim());
+        }
+      }, 800);
     }
   };
 
@@ -89,6 +465,53 @@ function LoginModal({ onLogin }) {
           animation: 'scanline 2s linear infinite'
         }}></div>
         
+        {/* Login Type Toggle */}
+        <div style={{
+          display: 'flex',
+          gap: '10px',
+          marginBottom: '20px',
+          background: 'rgba(0, 0, 0, 0.3)',
+          padding: '5px',
+          borderRadius: '10px'
+        }}>
+          <button
+            onClick={() => setIsAdvertiser(false)}
+            style={{
+              flex: 1,
+              padding: '12px',
+              background: !isAdvertiser ? 'linear-gradient(90deg, #00d4ff, #7b2ff7)' : 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '13px',
+              cursor: 'pointer',
+              fontFamily: 'monospace',
+              letterSpacing: '1px',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            PLAYER
+          </button>
+          <button
+            onClick={() => setIsAdvertiser(true)}
+            style={{
+              flex: 1,
+              padding: '12px',
+              background: isAdvertiser ? 'linear-gradient(90deg, #7b2ff7, #a855f7)' : 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '13px',
+              cursor: 'pointer',
+              fontFamily: 'monospace',
+              letterSpacing: '1px',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            ADVERTISER
+          </button>
+        </div>
+        
         <div style={{
           background: 'rgba(0, 0, 0, 0.5)',
           padding: '10px',
@@ -114,7 +537,7 @@ function LoginModal({ onLogin }) {
         <div>
           <input
             type="text"
-            placeholder="ENTER CALLSIGN"
+            placeholder={isAdvertiser ? "ADVERTISER ID" : "ENTER CALLSIGN"}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -124,13 +547,13 @@ function LoginModal({ onLogin }) {
               padding: '16px 20px',
               fontSize: '16px',
               background: 'rgba(0, 212, 255, 0.05)',
-              border: '2px solid #00d4ff',
+              border: `2px solid ${isAdvertiser ? '#7b2ff7' : '#00d4ff'}`,
               borderRadius: '10px',
               color: 'white',
               outline: 'none',
               marginBottom: '20px',
               transition: 'all 0.3s ease',
-              boxShadow: '0 0 20px rgba(0, 212, 255, 0.2)',
+              boxShadow: `0 0 20px ${isAdvertiser ? 'rgba(123, 47, 247, 0.2)' : 'rgba(0, 212, 255, 0.2)'}`,
               fontFamily: 'monospace',
               letterSpacing: '2px',
               textTransform: 'uppercase'
@@ -143,14 +566,14 @@ function LoginModal({ onLogin }) {
               padding: '18px 20px',
               fontSize: '18px',
               fontWeight: 'bold',
-              background: 'linear-gradient(90deg, #00d4ff, #7b2ff7)',
+              background: isAdvertiser ? 'linear-gradient(90deg, #7b2ff7, #a855f7)' : 'linear-gradient(90deg, #00d4ff, #7b2ff7)',
               border: 'none',
               borderRadius: '10px',
               color: 'white',
               cursor: 'pointer',
               letterSpacing: '3px',
               transition: 'all 0.3s ease',
-              boxShadow: '0 0 30px rgba(0, 212, 255, 0.5)',
+              boxShadow: `0 0 30px ${isAdvertiser ? 'rgba(123, 47, 247, 0.5)' : 'rgba(0, 212, 255, 0.5)'}`,
               position: 'relative',
               overflow: 'hidden'
             }}
@@ -164,7 +587,9 @@ function LoginModal({ onLogin }) {
               background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
               animation: 'shimmer 3s infinite'
             }}></div>
-            <span style={{ position: 'relative', zIndex: 1 }}>⚡ ENTER ARENA ⚡</span>
+            <span style={{ position: 'relative', zIndex: 1 }}>
+              {isAdvertiser ? '💼 ACCESS PORTAL' : '⚡ ENTER ARENA ⚡'}
+            </span>
           </button>
         </div>
         
@@ -174,7 +599,9 @@ function LoginModal({ onLogin }) {
           color: '#666',
           fontFamily: 'monospace',
           letterSpacing: '1px'
-        }}>WARNING: ONLY ELITE COMBATANTS PERMITTED</p>
+        }}>
+          {isAdvertiser ? 'ADVERTISER PORTAL | MANAGE CAMPAIGNS' : 'WARNING: ONLY ELITE COMBATANTS PERMITTED'}
+        </p>
       </div>
       <style>{`
         @keyframes loginEntry {
@@ -223,9 +650,60 @@ function TicTacToe({ onExit }) {
   const [moveCount, setMoveCount] = useState(0);
   const [spectators, setSpectators] = useState(0);
   const [sessionId] = useState(`session_${Date.now()}_${Math.random()}`);
+  const [currentAd, setCurrentAd] = useState(null);
+
+  // Load and display random ad
+  useEffect(() => {
+    const loadAd = async () => {
+      try {
+        const result = await window.storage.get('global:active_ads', true);
+        if (result && result.value) {
+          const allAds = JSON.parse(result.value);
+          const activeAds = allAds.filter(ad => ad.active);
+          
+          if (activeAds.length > 0) {
+            const randomAd = activeAds[Math.floor(Math.random() * activeAds.length)];
+            setCurrentAd(randomAd);
+            
+            // Increment impressions
+            randomAd.impressions = (randomAd.impressions || 0) + 1;
+            await window.storage.set('global:active_ads', JSON.stringify(allAds), true);
+          }
+        }
+      } catch (error) {
+        console.log('Error loading ad:', error);
+      }
+    };
+    
+    loadAd();
+  }, []);
+
+  const handleAdClick = async () => {
+    if (!currentAd) return;
+    
+    try {
+      // Increment clicks
+      const result = await window.storage.get('global:active_ads', true);
+      if (result && result.value) {
+        const allAds = JSON.parse(result.value);
+        const adIndex = allAds.findIndex(a => a.id === currentAd.id);
+        if (adIndex !== -1) {
+          allAds[adIndex].clicks = (allAds[adIndex].clicks || 0) + 1;
+          await window.storage.set('global:active_ads', JSON.stringify(allAds), true);
+        }
+      }
+      
+      // Open ad URL
+      if (currentAd.url) {
+        window.open(currentAd.url, '_blank');
+      }
+    } catch (error) {
+      console.log('Error tracking ad click:', error);
+    }
+  };
 
   // Real spectator tracking with persistent storage
-  useState(() => {
+  useEffect(() => {
     let isActive = true;
     
     const updateSpectators = async () => {
@@ -848,6 +1326,87 @@ function TicTacToe({ onExit }) {
               ))}
             </div>
           </div>
+
+          {/* Advertisement Slot */}
+          {currentAd && (
+            <div
+              onClick={handleAdClick}
+              style={{
+                background: 'rgba(10, 10, 20, 0.8)',
+                padding: '20px',
+                borderRadius: '15px',
+                border: '2px solid rgba(255, 215, 0, 0.4)',
+                boxShadow: '0 0 30px rgba(255, 215, 0, 0.2)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.8)';
+                e.currentTarget.style.boxShadow = '0 0 40px rgba(255, 215, 0, 0.4)';
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.4)';
+                e.currentTarget.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.2)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                fontSize: '8px',
+                color: '#666',
+                fontFamily: 'monospace',
+                letterSpacing: '1px',
+                background: 'rgba(0, 0, 0, 0.5)',
+                padding: '3px 8px',
+                borderRadius: '4px'
+              }}>SPONSORED</div>
+
+              <div style={{
+                fontSize: '48px',
+                textAlign: 'center',
+                marginBottom: '15px',
+                filter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.5))'
+              }}>{currentAd.imageUrl}</div>
+
+              <div style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#FFD700',
+                marginBottom: '8px',
+                textAlign: 'center',
+                letterSpacing: '1px'
+              }}>{currentAd.title}</div>
+
+              <div style={{
+                fontSize: '10px',
+                color: '#999',
+                textAlign: 'center',
+                fontFamily: 'monospace',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>{currentAd.url}</div>
+
+              <div style={{
+                marginTop: '15px',
+                padding: '8px',
+                background: 'rgba(255, 215, 0, 0.1)',
+                borderRadius: '6px',
+                textAlign: 'center',
+                fontSize: '11px',
+                color: '#FFD700',
+                fontFamily: 'monospace',
+                letterSpacing: '1px'
+              }}>
+                CLICK TO LEARN MORE →
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1213,6 +1772,7 @@ function NumberGuess({ onExit }) {
 function App() {
   const [activeGame, setActiveGame] = useState(null);
   const [username, setUsername] = useState(null);
+  const [isAdvertiser, setIsAdvertiser] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [userRank] = useState('INITIATE');
   const [userXP] = useState(750);
@@ -1240,8 +1800,21 @@ function App() {
     }, 400);
   };
 
+  const handleLogout = () => {
+    setUsername(null);
+    setIsAdvertiser(false);
+    setActiveGame(null);
+  };
+
   if (!username) {
-    return <LoginModal onLogin={setUsername} />;
+    return <LoginModal onLogin={setUsername} onAdvertiserLogin={(name) => {
+      setUsername(name);
+      setIsAdvertiser(true);
+    }} />;
+  }
+
+  if (isAdvertiser) {
+    return <AdvertiserDashboard advertiserName={username} onLogout={handleLogout} />;
   }
 
   const games = [
